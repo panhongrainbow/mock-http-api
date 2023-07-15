@@ -12,7 +12,7 @@ import (
 	"strings"
 	"text/template"
 
-	mockapi "github.com/mkeeler/mock-http-api"
+	mockapi "github.com/panhongrainbow/mock-http-api"
 )
 
 const (

@@ -265,6 +265,73 @@ func (m *MockAPI) WithStreamingReply(req *MockRequest, status int, reply io.Read
 	})
 }
 
+func (m *MockAPI) WithJSONReplyAlter(req *MockRequest, status int, reply interface{}) (ret *MockAPICall) {
+	if len(m.m.ExpectedCalls) > 0 {
+		for i := 0; i < len(m.m.ExpectedCalls); i++ {
+			//
+			if m.m.ExpectedCalls[i].Method != "ServeHTTP" {
+				continue
+			}
+
+			//
+			if len(m.m.ExpectedCalls[i].Arguments) >= 1 &&
+				req.method != m.m.ExpectedCalls[i].Arguments[0].(string) {
+				continue
+			}
+
+			//
+			if len(m.m.ExpectedCalls[i].Arguments) >= 2 &&
+				req.path != m.m.ExpectedCalls[i].Arguments[1].(string) {
+				continue
+			}
+
+			fmt.Println()
+
+			//
+			/*if len(m.m.ExpectedCalls[i].Arguments) >= 2 ||
+				req.headers != m.m.ExpectedCalls[i].Arguments[1].(string) {
+				continue
+			}*/
+		}
+
+		//
+
+		// "ServeHTTP", req.method, req.path, req.headers, req.queryParams, req.body
+
+		/*for i := range  {
+			if content1[i] != m.m.ExpectedCalls[i].Arguments[0] {
+				fmt.Println("The contents are not equal")
+				return
+			}
+		}
+
+		fmt.Println(2, m.m.ExpectedCalls[i].Arguments[0].(string), req.method)*/
+	}
+
+	/*m.m.ExpectedCalls[0].ReturnArguments = nil
+
+	resp := func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(status)
+
+		fmt.Printf("reply: %v\n", reply)
+		if reply == nil {
+			return
+		}
+
+		enc := json.NewEncoder(w)
+		err := enc.Encode(reply)
+		if m.t != nil {
+			require.NoError(m.t, err)
+		} else {
+			panic(err)
+		}
+	}
+
+	m.m.ExpectedCalls[0].Return(MockResponse(resp))*/
+
+	return
+}
+
 // AssertExpectations will assert that all expected API invocations have happened and fail
 // the test if any required calls did not happen.
 func (m *MockAPI) AssertExpectations(t TestingT) {
