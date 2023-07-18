@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"time"
@@ -141,14 +140,26 @@ func (m *MockAPI) URL() string {
 func (m *MockAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var body interface{}
 
+	// If the Body is not empty
 	if r.Body != nil {
-		bodyBytes, err := ioutil.ReadAll(r.Body)
-		if err == nil && len(bodyBytes) > 0 {
+		// Use io.ReadAll with a buffer instead of ioutil.ReadAll without a buffer
+		bodyBytes, err := io.ReadAll(r.Body)
+		if err != nil {
+			m.t.Errorf("Error occurred while reading the request body: %v", err)
+		}
+		if len(bodyBytes) > 0 && // Check if the length of bodyBytes is greater than 0 and
+			bodyBytes[0] != 123 && // the first byte of bodyBytes is not equal to 123 (ASCII code for '{') and
+			bodyBytes[len(bodyBytes)-1] != 125 { // the last byte of bodyBytes is not equal to 125 (ASCII code for '}').
+			// Perform some action or handle the condition where the body does not start with '{' and does not end with '}'.
 			body = bodyBytes
-
-			var bodyMap map[string]interface{}
-			if err := json.Unmarshal(bodyBytes, &bodyMap); err != nil {
-				body = bodyMap
+		} else {
+			// If the content of the Body is in JSON format
+			if err == nil && len(bodyBytes) > 0 {
+				body = bodyBytes
+				var bodyMap map[string]interface{}
+				if err := json.Unmarshal(bodyBytes, &bodyMap); err != nil {
+					body = bodyMap
+				}
 			}
 		}
 	}
