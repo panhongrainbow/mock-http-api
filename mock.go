@@ -59,8 +59,73 @@ func NewMockRequest(method, path string) *MockRequest {
 }
 
 func (r *MockRequest) WithBody(body interface{}) *MockRequest {
-	r.body = body
+	var bodyBytes []byte
+	var err error
+	// First determine body data format
+	switch body.(type) {
+	case string:
+		// If it's a string, convert to []byte for further processing
+		bodyBytes = []byte(body.(string))
+	case []byte:
+		// If it's []byte, use directly for further processing
+		bodyBytes = body.([]byte)
+	default:
+		// If it's a struct, marshal to bytes based on json tags
+		bodyBytes, err = json.Marshal(body)
+		if err != nil {
+			// If error occurs, cannot process, just copy body and return (我无法处理，直接复制回传)
+			r.body = body
+			return r
+		}
+		// If no error, body will be converted to map[string]interface{} later
+		// Because all structs and JSON can convert to this common format
+	}
+
+	r.body, err = processBodyBytes(bodyBytes)
+	if err != nil {
+		r.body = body
+	}
+
+	// Further processing
+	/*if len(bodyBytes) > 0 { // Check if the length of bodyBytes is greater than 0
+		if bodyBytes[0] != 123 && // the first byte of bodyBytes is not equal to 123 (ASCII code for '{') and
+			bodyBytes[len(bodyBytes)-1] != 125 { // the last byte of bodyBytes is not equal to 125 (ASCII code for '}').
+			// Perform some action or handle the condition where the body does not start with '{' and does not end with '}'.
+			r.body = bodyBytes // body is []byte
+		} else {
+			var bodyMap map[string]interface{}
+			err = json.Unmarshal(bodyBytes, &bodyMap)
+			if err != nil {
+				// If error occurs, cannot process, just copy body and return (我无法处理，直接复制回传)
+				r.body = body
+				return r
+			}
+			r.body = bodyMap // body is JSON
+		}
+	}*/
+
+	// Return after processing
 	return r
+}
+
+func processBodyBytes(bodyBytes []byte) (ret interface{}, err error) {
+	// Further processing
+	if len(bodyBytes) > 0 { // Check if the length of bodyBytes is greater than 0
+		if bodyBytes[0] != 123 && // the first byte of bodyBytes is not equal to 123 (ASCII code for '{') and
+			bodyBytes[len(bodyBytes)-1] != 125 { // the last byte of bodyBytes is not equal to 125 (ASCII code for '}').
+			// Perform some action or handle the condition where the body does not start with '{' and does not end with '}'.
+			ret = bodyBytes // body is []byte
+		} else {
+			var bodyMap map[string]interface{}
+			err = json.Unmarshal(bodyBytes, &bodyMap)
+			if err != nil {
+				// If error occurs, cannot process, just copy body and return (我无法处理，直接复制回传)
+				return
+			}
+			ret = bodyMap // body is JSON
+		}
+	}
+	return
 }
 
 // WithHeaders will set these headers to be expected in the request
@@ -147,7 +212,7 @@ func (m *MockAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			m.t.Errorf("Error occurred while reading the request body: %v", err)
 		}
-		if len(bodyBytes) > 0 && // Check if the length of bodyBytes is greater than 0 and
+		/*if len(bodyBytes) > 0 && // Check if the length of bodyBytes is greater than 0 and
 			bodyBytes[0] != 123 && // the first byte of bodyBytes is not equal to 123 (ASCII code for '{') and
 			bodyBytes[len(bodyBytes)-1] != 125 { // the last byte of bodyBytes is not equal to 125 (ASCII code for '}').
 			// Perform some action or handle the condition where the body does not start with '{' and does not end with '}'.
@@ -155,12 +220,17 @@ func (m *MockAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else {
 			// If the content of the Body is in JSON format
 			if err == nil && len(bodyBytes) > 0 {
-				body = bodyBytes
 				var bodyMap map[string]interface{}
-				if err := json.Unmarshal(bodyBytes, &bodyMap); err != nil {
-					body = bodyMap
+				err = json.Unmarshal(bodyBytes, &bodyMap)
+				if err != nil {
+					m.t.Errorf("Error occurred while unmarshaling JSON data: %v", err)
 				}
+				body = bodyMap
 			}
+		}*/
+		body, err = processBodyBytes(bodyBytes)
+		if err != nil {
+			m.t.Errorf("Error occurred while processing body bytes: %v", err)
 		}
 	}
 
@@ -295,8 +365,6 @@ func (m *MockAPI) WithJSONReplyAlter(req *MockRequest, status int, reply interfa
 				req.path != m.m.ExpectedCalls[i].Arguments[1].(string) {
 				continue
 			}
-
-			fmt.Println()
 
 			//
 			/*if len(m.m.ExpectedCalls[i].Arguments) >= 2 ||
